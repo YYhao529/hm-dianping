@@ -2,6 +2,7 @@ package com.hmdp.service.impl;
 
 import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
@@ -66,8 +67,8 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return null;
         }
         // 3.命中，判断缓存是否过期
-        RedisData<Shop> redisData = JSONUtil.toBean(shopStr, RedisData.class);
-        Shop shop = redisData.getData();
+        RedisData redisData = JSONUtil.toBean(shopStr, RedisData.class);
+        Shop shop =JSONUtil.toBean((JSONObject) redisData.getData(),Shop.class);
         LocalDateTime expireTime = redisData.getExpireTime();
         // 4.判断是否过期
         if (expireTime.isAfter(LocalDateTime.now())) {
@@ -87,7 +88,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                     throw new RuntimeException(e);
                 } finally {
                     // 5.3释放锁
-                    unLock(key);
+                    unLock(lockKey);
                 }
             });
         }
@@ -150,11 +151,12 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return shop;
     }
 
-    public void saveShop2Redis(Long id, Long expireSeconds) {
+    public void saveShop2Redis(Long id, Long expireSeconds) throws InterruptedException {
         // 1.查询店铺数据
         Shop shop = getById(id);
+        Thread.sleep(2000);
         // 2.封装逻辑过期时间
-        RedisData<Shop> shopRedisData = new RedisData<>();
+        RedisData shopRedisData = new RedisData();
         shopRedisData.setData(shop);
         shopRedisData.setExpireTime(LocalDateTime.now().plusSeconds(expireSeconds));
         // 3.写入redis
