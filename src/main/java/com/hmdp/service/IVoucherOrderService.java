@@ -16,7 +16,7 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
     /**
      *  秒杀卷下单
      */
-    Result seckillVoucher(Long voucherId);
+    Result seckillVoucher(Long voucherId) throws InterruptedException;
 
     Result createVoucherOrder(Long voucherId);
 }

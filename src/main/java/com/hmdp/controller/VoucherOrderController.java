@@ -29,7 +29,7 @@ public class VoucherOrderController {
      *  秒杀卷下单
      */
     @PostMapping("seckill/{id}")
-    public Result seckillVoucher(@PathVariable("id") Long voucherId) {
+    public Result seckillVoucher(@PathVariable("id") Long voucherId) throws InterruptedException {
         return voucherOrderService.seckillVoucher(voucherId);
     }
 }
