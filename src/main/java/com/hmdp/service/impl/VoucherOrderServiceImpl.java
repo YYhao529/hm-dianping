@@ -65,7 +65,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 
     private class VoucherOrderHandler implements Runnable {
         String queueName = "stream.order";
-
         @Override
         public void run() {
             while (true) {
@@ -81,7 +80,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
                         // 2.1如果获取失败，说明没有消息，继续下一次循环
                         continue;
                     }
-                    // 3.解析消息中的订单信息
+                    // 3.解析消息中的订单信息 （队列名称，唯一ID，键值对）
                     MapRecord<String, Object, Object> record = list.get(0);
                     Map<Object, Object> values = record.getValue();
                     VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(values, new VoucherOrder(), true);
