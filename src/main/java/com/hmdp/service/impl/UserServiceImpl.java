@@ -13,8 +13,10 @@ import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
 import com.hmdp.utils.RegexUtils;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -23,7 +25,9 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -64,6 +68,64 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 5.发送验证码
         log.info("发送短信验证码：" + code);
         //返回ok
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        // 1.获取当前登录用户
+        Long userId = UserHolder.getUser().getId();
+        // 2.获取当前日期
+        LocalDateTime now = LocalDateTime.now();
+        // 3.拼接key
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        String key=USER_SIGN_KEY+userId+keySuffix;
+        // 4.计算当天是一个月中的第几天
+        int dayOfMonth = now.getDayOfMonth();
+        // 5.获取当前用户在当前月到今天为止的签到情况，返回的是十进制数  BITFIELD sign:5:202203 GET u14 0
+        List<Long> result = stringRedisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create().get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0)
+        );
+        if (result==null||result.isEmpty()){
+            return Result.ok(0);
+        }
+        Long num = result.get(0);
+        if (num==0){
+            return Result.ok(0);
+        }
+        // 6.1循环遍历
+        int count=0;
+        while (true){
+            // 6.2将十进制数与1做与运算，得到最低bit位
+            // 7.判断最低为是0还是1
+            if ((num & 1) == 0){
+                // 7.1如果是0，结束
+                break;
+            }else{
+                // 7.2如果是1，计数器+1
+                count++;
+            }
+            //继续右移1位
+            num>>>=1;
+        }
+        // 8.返回连续签到天数
+        return Result.ok(count);
+    }
+
+    @Override
+    public Result sign() {
+        // 1.获取当前登录用户
+        Long userId = UserHolder.getUser().getId();
+        // 2.获取当前日期
+        LocalDateTime now = LocalDateTime.now();
+        // 3.拼接key
+        String keySuffix = now.format(DateTimeFormatter.ofPattern(":yyyyMM"));
+        String key=USER_SIGN_KEY+userId+keySuffix;
+        // 4.计算当天是一个月中的第几天
+        int dayOfMonth = now.getDayOfMonth();
+        // 5.写入redis SETBIT key offset 1
+        stringRedisTemplate.opsForValue().setBit(key,dayOfMonth-1,true);
         return Result.ok();
     }
 
